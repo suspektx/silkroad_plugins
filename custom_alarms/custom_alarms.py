@@ -27,7 +27,7 @@ from threading import Timer
 
 # GLOBAL VARIABLES
 plugin_name = 'Custom Alarms'
-plugin_version = '1.1'
+plugin_version = '1.2'
 plugin_new_version = 0
 
 job_list = ["Selket", "Neith", "Isis", "Anubis", "Haroeris", "Seth"]
@@ -123,6 +123,8 @@ __mute__ = QtBind.createCheckBox(gui, "mute_checked", "Mute alarms", 500, 80)
 
 # GUI FUNCTIONS
 def load_gui():
+	global mute_flag
+	
     if os.path.exists(get_character_config()):
         QtBind.clear(gui, add_unique_textbox)
         QtBind.clear(gui, unique_list)
@@ -134,6 +136,8 @@ def load_gui():
             if unique_name in custom_flags:
                 checkbox = globals().get(unique_name)
                 QtBind.setChecked(gui, checkbox, status)
+		    if status == True:
+			    mute_flag = True
             elif status:
                 QtBind.append(gui, unique_alarm_list, unique_name)
             else:
