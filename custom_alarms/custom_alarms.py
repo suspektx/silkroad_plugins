@@ -11,7 +11,7 @@ import threading
 
 # GLOBAL VARIABLES
 plugin_name = 'Custom Alarms'
-plugin_version = '1.2'
+plugin_version = '2.0'
 plugin_new_version = 0
 
 job_list = ["Selket", "Neith", "Isis", "Anubis", "Haroeris", "Seth"]
