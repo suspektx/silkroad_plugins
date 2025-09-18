@@ -1,29 +1,13 @@
-#   This plugin requires several external libraries
-#   You have to have these files in phBot/Plugins/python38/Lib
-#   Otherwise the plugin will not load
-#
-#   certifi
-#   charset_normalizer
-#   gtts
-#   idna
-#   playsound
-#   requests
-#   urllib3
-#
-
-import os
-import QtBind
-import struct
-import re
-import json
-import threading
-import time
-import urllib.request
-
 from phBot import *
-from gtts import gTTS
-from playsound import playsound
-from threading import Timer
+import QtBind
+import platform
+import subprocess
+import shutil
+import os
+import struct
+import json
+import urllib.request
+import threading
 
 # GLOBAL VARIABLES
 plugin_name = 'Custom Alarms'
@@ -238,32 +222,35 @@ def update_list(list, ordered_items):
     for items in ordered_items:
         QtBind.append(gui, list, items)
 
-# ALARM FUNCTIONS
-def create_alarm(unique_name):
-    language = 'en'
-    alarm = gTTS(text=unique_name, lang=language, slow=True) 
-    alarm_path = os.path.join(alarm_folder, f'{unique_name}.mp3')
+# TTS FUNCTION
+def speak(text: str):
+    def worker(t):
+        os_name = platform.system()
+        try:
+            if os_name == "Windows":
+                safe_text = t.replace("'", "''")
+                command = [
+                    "powershell",
+                    "-NoLogo",
+                    "-NoProfile",
+                    "-Command",
+                    f"Add-Type -AssemblyName System.Speech; "
+                    f"$speak = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
+                    f"$speak.Speak('{safe_text}')"
+                ]
+                subprocess.run(command, creationflags=subprocess.CREATE_NO_WINDOW)
 
-    alarm.save(alarm_path) 
-    log(f'Alarm file for [{unique_name}] created.')
-    play_alarm(unique_name)
+            elif os_name == "Darwin":
+                subprocess.run(["say", t])
 
-def play_alarm(unique_name):
-    global last_alarm_timestamps
-    
-    alarm_path = os.path.join(alarm_folder, f'{unique_name}.mp3')
-    
-    current_time = time.time()
-    last_alarm_time = last_alarm_timestamps.get(unique_name, 0)
-    cooldown_duration = 5  # Adjust this duration as needed (in seconds)
+            elif os_name == "Linux":
+                if shutil.which("espeak"):
+                    subprocess.run(["espeak", t])
+        except Exception as e:
+            log(f"TTS Error: {e}")
 
-    if current_time - last_alarm_time >= cooldown_duration:
-        if os.path.exists(alarm_path):
-            threading.Thread(target=playsound.playsound, args=(alarm_path,)).start()
-        else:
-            create_alarm(unique_name)
-
-        last_alarm_timestamps[unique_name] = current_time
+    # Start TTS in a separate thread so it doesn't block phBot
+    threading.Thread(target=worker, args=(text,), daemon=True).start()
 
 # BUILT-IN FUNCTIONS
 def handle_joymax(opcode, data):
@@ -287,12 +274,12 @@ def handle_joymax(opcode, data):
                 ensure_alphabetical_order(unique_list)
                     
             if update_type == 5 and unique_name in items_unique_alarm_list and not mute_flag:
-                play_alarm(unique_name)
+                speak(unique_name)
 
     return True
 
 def joined_game():
-	Timer(4.0, load_gui, ()).start()
+	threading.Timer(4.0, load_gui, ()).start()
 
 # RELOAD PLUGIN SUPPORT AND CONFIG FOLDER CREATION
 if not os.path.exists(config_folder):
@@ -323,5 +310,5 @@ def update_check():
 
 # PLUGIN LOAD
 update_check()
-Timer(1.0, load_gui, ()).start()
+threading.Timer(1.0, load_gui, ()).start()
 log(f'[{plugin_name}] v.{plugin_version} ~ loaded.')
